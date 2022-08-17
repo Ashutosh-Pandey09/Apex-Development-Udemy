@@ -1,0 +1,49 @@
+Que --> 
+SFDCFacts Academy uses Salesforce platform to run their business. Recently, they introduced a new process to track the average case resolution date for each of their
+customer. The I.T. team has created a new number field called average case resolution days on account object, so that they can show it on the account itself.
+Now a developer was hired to implement a method that can update the average case resolution days field on account object. The developer did his job and the average case resolution days was correctly being populated on the
+account object, but the business team noticed that this method or this solution doesn't work with multiple accounts at once. It can only take one account ID at a time and can populate the field value correctly.
+The team has thought of investing again in this solution. So, they hired you to optimize the current code so that it can work with multiple accounts at a time.
+So, your job is to bulkify the current method, so that it can handle multiple accounts at once and it can correctly populate the average case resolution days field on the account object.
+Now let me show you how the current implementation looks like. So, we have a method called update average case resolution days in account controller class.
+This method accepts an account Id, then it runs a SOQL query to get all the related closed cases for that particular account, and then it increases the total number of cases and the total number of days spent on those cases.
+Finally, it calculates the average resolution days by dividing total number of days by total number of cases, and then it updates that account.
+You need to modify the function so that it can accept a list of account Ids and then it can populate the average case resolution days field on all those accounts.
+
+Ans --> 
+//Approach 1 using nested for loops
+
+public class AccountController {
+    
+    public static void updateAvgCaseResolutionDays(List<Id> accountIds){
+        
+        // retrive all the cases for this account
+        // get resolution days for each account (ClosedDate - CreatedDate)
+        List<Account> accListUpdate = new List<Account>();
+            for(Id accId: accountIds){
+                Integer totalDays = 0, totalCases = 0;
+                for(Case caseObj : [SELECT Id, CreatedDate, ClosedDate
+                                    FROM Case
+                                    WHERE IsClosed=true
+                                    AND AccountId =:accId]){
+                                        // increase number of cases
+                                        totalCases++;
+                                        // get duration in days and add it to totalDays
+                                        totalDays += caseObj.CreatedDate.date().daysBetween(caseObj.ClosedDate.date());
+                                    }
+                if(totalCases != 0){
+                    Decimal resolutionDays = totalDays/totalCases;
+                    // update account object
+                    Account acc = new Account(Id=accId, Avg_Case_Resolution_Days__c = resolutionDays);
+                	accListUpdate.add(acc);
+                }
+                else{
+                    // update account object
+                    Account acc = new Account(Id=accId, Avg_Case_Resolution_Days__c = 0);
+                	accListUpdate.add(acc);
+                }   
+            }
+        
+        update accListUpdate;
+    }
+}
