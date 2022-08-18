@@ -1,0 +1,42 @@
+//Challenge 12-Bulkification approach 2 using Maps
+
+public class AccountController {
+    
+    public static void updateAvgCaseResolutionDays(List<Id> accountIds){
+        
+        // retrive all the cases for this account
+        // get resolution days for each account (ClosedDate - CreatedDate)
+        Map<Id,Integer> totalCasesMap = new Map<Id,Integer>();
+        Map<Id,Integer> totalDaysMap = new Map<Id,Integer>();
+        List<Account> accListUpdate = new List<Account>();
+        
+        for(Case caseObj : [SELECT Id, CreatedDate, ClosedDate, AccountId FROM Case WHERE IsClosed=true AND AccountId IN :accountIds]){
+            if(totalCasesMap.containsKey(caseObj.AccountId)){
+                // increase number of cases
+                Integer totalCases = totalCasesMap.get(caseObj.AccountId);
+                totalCases++;
+                totalCasesMap.put(caseObj.AccountId,totalCases);
+                
+                Integer totalDays = totalDaysMap.get(caseObj.AccountId);
+                // get duration in days and add it to totalDays
+                totalDays += caseObj.CreatedDate.date().daysBetween(caseObj.ClosedDate.date());
+                totalDaysMap.put(caseObj.AccountId,totalDays);
+            }else{
+                totalCasesMap.put(caseObj.AccountId,1);
+                totalDaysMap.put(caseObj.AccountId,caseObj.CreatedDate.date().daysBetween(caseObj.ClosedDate.date()));
+            }
+        }
+        
+        for(Id accountId : totalDaysMap.keySet()){
+            Decimal resolutionDays = totalDaysMap.get(accountId)/totalCasesMap.get(accountId);
+            Account acc = new Account(Id=accountId, Avg_Case_Resolution_Days__c = resolutionDays);
+            accListUpdate.add(acc);   
+        }
+        update accListUpdate;
+    }
+}
+
+
+//Anonymous window call to execute the AccountController function
+Map<Id,Account> accRecordMap = new Map<Id,Account>([SELECT Id FROM Account]);
+AccountController.updateAvgCaseResolutionDays(new List<Id>(accRecordMap.keySet()));
